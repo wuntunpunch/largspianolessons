@@ -34,6 +34,9 @@ const formSchema = z.object({
   query: z.string().min(10, {
     message: "Query must be at least 10 characters.",
   }),
+  honeypot: z.string().max(0, "This field should remain empty."),
+
+  timestamp: z.number(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -54,6 +57,9 @@ export default function ContactForm({ isOpen, onClose }: ContactFormProps) {
       phone: "",
       email: "",
       query: "",
+      honeypot: "",
+
+      timestamp: Date.now(),
     },
   });
 
@@ -159,6 +165,29 @@ export default function ContactForm({ isOpen, onClose }: ContactFormProps) {
                     />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="honeypot"
+              render={({ field }) => (
+                <FormItem style={{ display: "none" }}>
+                  <FormControl>
+                    <Input {...field} tabIndex={-1} autoComplete="off" />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="timestamp"
+              render={({ field }) => (
+                <FormItem style={{ display: "none" }}>
+                  <FormControl>
+                    <Input type="hidden" {...field} />
+                  </FormControl>
                 </FormItem>
               )}
             />
