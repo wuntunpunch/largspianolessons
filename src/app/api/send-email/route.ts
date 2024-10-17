@@ -7,8 +7,9 @@ export async function POST(request: Request) {
   const { name, email, query } = await request.json();
 
   try {
+    console.log("API Key exists:", !!process.env.RESEND_API_KEY);
     const data = await resend.emails.send({
-      from: "Your Name <onboarding@resend.dev>", // Use this email initially, then update to your verified domain
+      from: "Largs Piano Lessons <contact@colinyoung.scot>",
       to: "colin@colinyoung.scot",
       subject: "New Contact Form Submission",
       text: `
