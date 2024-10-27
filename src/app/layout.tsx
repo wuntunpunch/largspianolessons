@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import CookieConsent from "@/components/cookie-consent";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -70,18 +71,33 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         {children}
+
+        <CookieConsent />
+
         <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=G-Z1QL55TTDP`}
+          id="ga-script-1"
           strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              
+              // Only initialize GA if consent was previously given
+              if (localStorage.getItem('cookieConsent') === 'accepted') {
+                gtag('js', new Date());
+                gtag('config', 'G-Z1QL55TTDP', {
+                  anonymize_ip: true,
+                  cookie_flags: 'SameSite=None;Secure'
+                });
+              }
+            `,
+          }}
         />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-Z1QL55TTDP');
-          `}
-        </Script>
+        <Script
+          id="ga-script-2"
+          strategy="afterInteractive"
+          src="https://www.googletagmanager.com/gtag/js?id=G-Z1QL55TTDP"
+        />
       </body>
     </html>
   );
