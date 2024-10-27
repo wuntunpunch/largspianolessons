@@ -80,6 +80,12 @@ const PianoLessonsPageHeader = () => {
               >
                 Contact Me
               </button>
+
+              <a href="/privacy-policy">
+                <button className="text-left hover:text-[#0f4c82]">
+                  Privacy Policy
+                </button>
+              </a>
             </nav>
           </div>
         </div>
