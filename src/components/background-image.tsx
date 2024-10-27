@@ -19,8 +19,8 @@ const BackgroundImage: React.FC<BackgroundImageProps> = ({
       <Image
         src={src}
         alt={alt}
-        layout="fill"
-        objectFit="cover"
+        fill={true}
+        style={{ objectFit: "cover" }}
         priority={priority}
         className="z-0"
       />
