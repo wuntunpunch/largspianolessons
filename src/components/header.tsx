@@ -81,6 +81,12 @@ const PianoLessonsPageHeader = () => {
                 Contact Me
               </button>
 
+              <a href="/relative-keys">
+                <button className="text-left hover:text-[#0f4c82]">
+                  Relative Key Game
+                </button>
+              </a>
+
               <a href="/privacy-policy">
                 <button className="text-left hover:text-[#0f4c82]">
                   Privacy Policy
