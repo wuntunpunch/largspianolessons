@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 // Define types
 interface Key {
@@ -51,18 +51,16 @@ const RelativeKeysGame = (): JSX.Element => {
   const [lastMatchTime, setLastMatchTime] = useState<number>(0);
   const [matchTimes, setMatchTimes] = useState<number[]>([]);
 
-  // Custom color constants based on brand colors
-  const COLORS = {
-    darkest: "#1d1d1b", // Almost black
-    dark: "#323232", // Dark gray
-    navy: "#16344e", // Dark navy blue
-    blue: "#0f4c82", // Medium blue
-    lightBlue: "#83a1bc", // Light blue/gray
-    brightBlue: "#1f9fff", // Bright/accent blue - Used for selected state
-    paleBlue: "#a5d9ff", // Very light blue
-    lightGray: "#c6c6c6", // Light gray
-    offWhite: "#f6f6f6", // Almost white
-  };
+  // Mobile touch state
+  const [selectedDragItem, setSelectedDragItem] = useState<string | null>(null);
+  const [isMobileDragging, setIsMobileDragging] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
+  const [currentDragPos, setCurrentDragPos] = useState({ x: 0, y: 0 });
+
+  // Refs for game elements
+  const targetRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const dragItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // All possible keys
   const allKeys = [
@@ -162,6 +160,8 @@ const RelativeKeysGame = (): JSX.Element => {
     setGameStarted(true);
     setLastMatchTime(Date.now());
     setMatchTimes([]);
+    setSelectedDragItem(null);
+    setIsMobileDragging(false);
   };
 
   // Timer effect
@@ -192,7 +192,79 @@ const RelativeKeysGame = (): JSX.Element => {
     }
   }, [items]);
 
-  // Handle drag start
+  // Helper to determine if user is on mobile
+  const isMobile = () => {
+    return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  };
+
+  // Mobile touch handling
+  const handleTouchStart = (e: React.TouchEvent, id: string) => {
+    if (isMobileDragging) return;
+
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    // Store both the global position and the position relative to the touched element
+    setDragStartPos({ x: touch.clientX, y: touch.clientY });
+    setCurrentDragPos({ x: touch.clientX, y: touch.clientY });
+    setSelectedDragItem(id);
+    setIsMobileDragging(true);
+  };
+
+  // Handle the drag movement
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobileDragging || !selectedDragItem) return;
+
+    const touch = e.touches[0];
+    setCurrentDragPos({ x: touch.clientX, y: touch.clientY });
+  };
+
+  // Handle touch end - drop logic
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isMobileDragging || !selectedDragItem) return;
+
+    // Check if we're over any target
+    const droppedOnTarget = findTargetAtPosition(currentDragPos);
+
+    if (droppedOnTarget) {
+      // Check if this is a matching pair
+      handleMatch(selectedDragItem, droppedOnTarget);
+    }
+
+    // Reset drag state
+    setSelectedDragItem(null);
+    setIsMobileDragging(false);
+  };
+
+  // Function to find which target (if any) the user's finger is over
+  const findTargetAtPosition = (position: {
+    x: number;
+    y: number;
+  }): string | null => {
+    // Convert the Map to an Array before iteration to avoid MapIterator issues
+    const targetEntries = Array.from(targetRefs.current.entries());
+
+    for (const [targetId, targetElement] of targetEntries) {
+      // Skip filled targets
+      const target = targets.find((t) => t.id === targetId);
+      if (target?.filled) continue;
+
+      const rect = targetElement.getBoundingClientRect();
+
+      if (
+        position.x >= rect.left &&
+        position.x <= rect.right &&
+        position.y >= rect.top &&
+        position.y <= rect.bottom
+      ) {
+        return targetId;
+      }
+    }
+
+    return null;
+  };
+
+  // Handle drag start for mouse
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
     id: string
@@ -201,12 +273,12 @@ const RelativeKeysGame = (): JSX.Element => {
     e.currentTarget.classList.add("opacity-50");
   };
 
-  // Handle drag end
+  // Handle drag end for mouse
   const handleDragEnd = (e: React.DragEvent<HTMLDivElement>): void => {
     e.currentTarget.classList.remove("opacity-50");
   };
 
-  // Handle drag over
+  // Handle drag over for mouse
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.currentTarget.classList.add(
@@ -216,7 +288,7 @@ const RelativeKeysGame = (): JSX.Element => {
     );
   };
 
-  // Handle drag leave
+  // Handle drag leave for mouse
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>): void => {
     e.currentTarget.classList.remove(
       "border-dashed",
@@ -225,7 +297,7 @@ const RelativeKeysGame = (): JSX.Element => {
     );
   };
 
-  // Handle drop
+  // Handle drop for mouse
   const handleDrop = (
     e: React.DragEvent<HTMLDivElement>,
     targetId: string
@@ -238,6 +310,11 @@ const RelativeKeysGame = (): JSX.Element => {
     );
 
     const itemId = e.dataTransfer.getData("text/plain");
+    handleMatch(itemId, targetId);
+  };
+
+  // Shared logic for handling matches
+  const handleMatch = (itemId: string, targetId: string): void => {
     const currentTime = Date.now();
     const timeElapsed = currentTime - lastMatchTime;
 
@@ -280,6 +357,8 @@ const RelativeKeysGame = (): JSX.Element => {
     setGameStarted(false);
     setGameOver(false);
     setShowKeySelector(false);
+    setSelectedDragItem(null);
+    setIsMobileDragging(false);
   };
 
   // Toggle key selection
@@ -315,8 +394,34 @@ const RelativeKeysGame = (): JSX.Element => {
     return bonus;
   };
 
+  // Calculate position for dragged item
+  const getDraggedItemStyle = () => {
+    if (!isMobileDragging || !selectedDragItem) return {};
+
+    // Find the original drag item element
+    const dragItem = dragItemRefs.current.get(selectedDragItem);
+    if (!dragItem) return {};
+
+    // Position the dragged item exactly at touch position
+    return {
+      left: `${currentDragPos.x - 50}px`, // Center horizontally
+      top: `${currentDragPos.y - 25}px`, // Center vertically
+      position: "fixed" as const,
+      zIndex: 1000,
+      width: "100px",
+      opacity: 0.9,
+      pointerEvents: "none" as const,
+    };
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 relative p-4 text-white py-20">
+    <div
+      className="flex flex-col items-center justify-center min-h-screen bg-gray-100 relative p-4 text-white py-20"
+      ref={containerRef}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: "none" }}
+    >
       {/* Dark gradient background added to bottom portion */}
       <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-gray-100 to-blue-800"></div>
 
@@ -421,13 +526,14 @@ const RelativeKeysGame = (): JSX.Element => {
               <>
                 <div className="flex flex-col items-center">
                   <h2 className="text-2xl mb-4">Select Difficulty:</h2>
-                  <div className="flex space-x-4">
+                  {/* Replace the existing difficulty buttons div with this */}
+                  <div className="flex flex-col xs:flex-row space-y-2 xs:space-y-0 xs:space-x-4">
                     <button
                       className={`px-6 py-3 rounded-lg ${
                         difficulty === "easy"
                           ? "bg-[#1f9fff] text-white"
                           : "bg-[#1d1d1b] text-white"
-                      } hover:bg-[#16344e] transition-colors`}
+                      } hover:bg-[#16344e] transition-colors w-full`}
                       onClick={() => setDifficulty("easy")}
                     >
                       Easy (3 keys)
@@ -437,7 +543,7 @@ const RelativeKeysGame = (): JSX.Element => {
                         difficulty === "medium"
                           ? "bg-[#1f9fff] text-white"
                           : "bg-[#1d1d1b] text-white"
-                      } hover:bg-[#16344e] transition-colors`}
+                      } hover:bg-[#16344e] transition-colors w-full`}
                       onClick={() => setDifficulty("medium")}
                     >
                       Medium (5 keys)
@@ -447,14 +553,13 @@ const RelativeKeysGame = (): JSX.Element => {
                         difficulty === "hard"
                           ? "bg-[#1f9fff] text-white"
                           : "bg-[#1d1d1b] text-white"
-                      } hover:bg-[#16344e] transition-colors`}
+                      } hover:bg-[#16344e] transition-colors w-full`}
                       onClick={() => setDifficulty("hard")}
                     >
                       Hard (8 keys)
                     </button>
                   </div>
                 </div>
-
                 <button
                   className="px-8 py-4 bg-[#1f9fff] rounded-lg text-xl hover:bg-[#0f4c82] transition-colors"
                   onClick={initializeGame}
@@ -464,7 +569,6 @@ const RelativeKeysGame = (): JSX.Element => {
                 >
                   Start Game
                 </button>
-
                 <div className="max-w-lg text-center mt-4">
                   <h3 className="text-xl mb-2">How to Play:</h3>
                   <p>
@@ -571,6 +675,21 @@ const RelativeKeysGame = (): JSX.Element => {
               </div>
             )}
 
+            {/* Mobile Dragged Item - Only show when dragging on mobile */}
+            {isMobileDragging && selectedDragItem && (
+              <div
+                className={`px-4 py-2 rounded-lg shadow-xl ${
+                  items.find((item) => item.id === selectedDragItem)?.type ===
+                  "major"
+                    ? "bg-[#1f9fff]"
+                    : "bg-[#83a1bc]"
+                } text-white`}
+                style={getDraggedItemStyle()}
+              >
+                {items.find((item) => item.id === selectedDragItem)?.name}
+              </div>
+            )}
+
             {/* Modified to always use flex-row layout instead of stacking */}
             <div className="flex flex-row justify-between gap-4 md:gap-8">
               {/* Items container */}
@@ -585,12 +704,18 @@ const RelativeKeysGame = (): JSX.Element => {
                         <div
                           key={item.id}
                           id={item.id}
-                          className={`p-2 md:p-4 rounded-lg cursor-move shadow-lg hover:shadow-xl transition-shadow text-center text-sm md:text-base ${getKeyTypeStyle(
+                          ref={(el) => {
+                            if (el) dragItemRefs.current.set(item.id, el);
+                          }}
+                          className={`h-12 md:h-16 p-2 md:p-4 rounded-lg cursor-move shadow-lg hover:shadow-xl transition-shadow text-center text-sm md:text-base border-2 border-[#83a1bc] ${getKeyTypeStyle(
                             item.type
-                          )}`}
-                          draggable
+                          )} ${
+                            selectedDragItem === item.id ? "opacity-0" : ""
+                          }`}
+                          draggable={!isMobile()}
                           onDragStart={(e) => handleDragStart(e, item.id)}
                           onDragEnd={handleDragEnd}
+                          onTouchStart={(e) => handleTouchStart(e, item.id)}
                         >
                           {item.name}{" "}
                           {item.type === "major" ? "Major" : "Minor"}
@@ -609,10 +734,15 @@ const RelativeKeysGame = (): JSX.Element => {
                   {targets.map((target) => (
                     <div
                       key={target.id}
+                      ref={(el) => {
+                        if (el) targetRefs.current.set(target.id, el);
+                      }}
                       className={`h-12 md:h-16 rounded-lg text-sm md:text-base
                         ${
                           target.filled
                             ? getKeyTypeStyle(target.type)
+                            : isMobileDragging
+                            ? "bg-[#16344e] border-2 border-[#83a1bc] border-dashed" // Highlight when dragging on mobile
                             : "bg-[#16344e] border-2 border-[#83a1bc]"
                         } 
                         flex items-center justify-center transition-colors`}
