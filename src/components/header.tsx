@@ -1,21 +1,31 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Logo from "./logo";
 import { Menu, X } from "lucide-react";
 import ContactForm from "./contact-form";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-const PianoLessonsPageHeader = () => {
+// Create a client component that safely uses useSearchParams
+const MenuCloseListener = ({
+  setIsMenuOpen,
+}: {
+  setIsMenuOpen: (open: boolean) => void;
+}) => {
+  // Import useSearchParams dynamically to avoid direct import
+  const { useSearchParams } = require("next/navigation");
   const searchParams = useSearchParams();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Close menu when route changes
   useEffect(() => {
     setIsMenuOpen(false);
-  }, [searchParams]);
+  }, [searchParams, setIsMenuOpen]);
+
+  return null;
+};
+
+const PianoLessonsPageHeader = () => {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -26,6 +36,11 @@ const PianoLessonsPageHeader = () => {
 
   return (
     <div>
+      {/* Wrap the useSearchParams component in Suspense */}
+      <Suspense fallback={null}>
+        <MenuCloseListener setIsMenuOpen={setIsMenuOpen} />
+      </Suspense>
+
       <header className="fixed top-0 left-0 right-0 bg-[#f6f6f6] shadow-md z-50">
         <div className="container mx-auto px-4 py-2 flex justify-between items-center">
           <div className="flex items-center">
