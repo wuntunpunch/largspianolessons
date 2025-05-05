@@ -414,13 +414,21 @@ const RelativeKeysGame = (): JSX.Element => {
     };
   };
 
+  // Container style - touchAction depends on game state
+  const containerStyle: React.CSSProperties = {
+    touchAction: gameStarted && !gameOver ? "none" : "auto",
+    height: gameStarted ? "100vh" : "auto",
+    minHeight: "100vh",
+    overflowY: gameStarted ? "hidden" : ("auto" as "hidden" | "auto"),
+  };
+
   return (
     <div
-      className="flex flex-col items-center justify-center min-h-screen bg-gray-100 relative p-4 text-white py-20"
+      className="flex flex-col items-center justify-center bg-gray-100 relative p-4 text-white py-20"
       ref={containerRef}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{ touchAction: "none" }}
+      style={containerStyle}
     >
       {/* Dark gradient background added to bottom portion */}
       <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-gray-100 to-blue-800"></div>
